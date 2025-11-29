@@ -55,6 +55,56 @@ If you want, I can pin specific versions for `langchain-core` and `langchain-oll
 - Run Ollama on a remote server accessible via HTTP (e.g., `http://your-server:11434`).
 - Use a cloud-hosted LLM API (e.g., OpenAI, Anthropic) instead of local Ollama.
 
+## Security — exposed API key
+
+It looks like an API key was previously committed into `app.py`. Treat any committed API key as compromised and rotate it immediately.
+
+Recommended immediate actions:
+- Revoke the exposed API key in the Google Cloud Console (or the provider dashboard) and create a new key.
+- Do NOT continue using the old key in any environment.
+
+How to provide the new key to the app:
+1. Locally, create a `.env` file in the project root (this file is already ignored by `.gitignore`) with:
+
+```
+GENAI_API_KEY=your_new_api_key_here
+```
+
+2. Or set the environment variable in your host (Streamlit Cloud or Render):
+
+PowerShell (local):
+```powershell
+setx GENAI_API_KEY "your_new_api_key_here"
+```
+
+Streamlit Cloud / Render: set the environment variable via the web dashboard for your app.
+
+Optional: Remove the key from git history
+
+If you want to remove the exposed key from the repository history so it's no longer in past commits, you can use one of these tools (warning: rewriting history is disruptive):
+
+- BFG Repo-Cleaner (recommended): https://rtyley.github.io/bfg-repo-cleaner/
+
+	Example:
+	```bash
+	# Backup remote first
+	git clone --mirror https://github.com/<your-username>/resume_ai.git
+	java -jar bfg.jar --delete-files id_rsa --replace-text passwords.txt resume_ai.git
+	cd resume_ai.git
+	git reflog expire --expire=now --all && git gc --prune=now --aggressive
+	git push --force
+	```
+
+- git filter-repo (alternative): https://github.com/newren/git-filter-repo
+
+	Example:
+	```bash
+	git filter-repo --invert-paths --path app.py
+	git push --force
+	```
+
+If you're unsure or want me to perform the history rewrite for you, tell me and I'll walk through it — but note you'll need to force-push and collaborators will need to re-clone.
+
 ### Option 2: Render or Fly.io (For remote Ollama or cloud LLM)
 1. Create an account on https://render.com or https://fly.io.
 2. Connect your GitHub repository.
