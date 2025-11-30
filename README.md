@@ -1,117 +1,141 @@
 # Resume Matcher AI
 
-This Streamlit app analyzes an uploaded resume against a pasted job description using a local Ollama model (preferred) or the Ollama CLI as a fallback. Optionally, if you have LangChain + Ollama integrations installed, the app will use `OllamaLLM` via LangChain.
+A simple Streamlit app that analyzes an uploaded resume against a pasted job description using Google Generative AI (Gemini). The app performs two main tasks:
+
+1. Strictly classifies whether an uploaded document looks like a resume.
+2. If it is a resume, produces a detailed Markdown report comparing the resume to the job description (match score, missing keywords, and recommended bullet edits).
+
+This README reflects the behavior implemented in app.py.
+
+## Features
+- Resume/TXT upload (PDF or plain text)
+- Strict resume detection using Gemini
+- Resume vs. Job Description analysis with a career-coach style report
+- Outputs a Markdown report including:
+  - Match Score (0–100)
+  - Missing Keywords
+  - Recommended changes to bullet points
+- Simple Streamlit UI with upload, job description text area, and an analyze button
+- Basic error handling and in-app warnings
 
 ## Prerequisites
 - Python 3.10+ (3.11/3.12 recommended)
-- Ollama installed and daemon running. Ensure the model you want is available locally, e.g. `ollama:latest`.
-- A virtual environment (recommended)
+- A Google Generative AI (Gemini) API key
+- Internet access for the Gemini API
+- A virtual environment is recommended
 
-## Setup
-1. Create and activate a virtual environment:
+## Required Python packages
+The app uses:
+- streamlit
+- google-generativeai
+- python-dotenv
+- PyPDF2
 
-```powershell
-python -m venv venv
-.\venv\Scripts\Activate.ps1
-```
-
-2. Install Python dependencies:
-
-```powershell
+You can install dependencies via:
+```bash
 pip install -r requirements.txt
 ```
 
-3. Confirm Ollama is running and the model exists:
-
-```powershell
-ollama ls
+If you don't have a requirements.txt, install directly:
+```bash
+pip install streamlit google-generativeai python-dotenv PyPDF2
 ```
 
-If the daemon is not running, start it according to your Ollama installation instructions.
+## Environment variables
+The app expects an environment variable named `GENAI_API_KEY`. You can provide it in one of two ways:
 
-## Run the app
+1. Create a `.env` file in the project root (this repository includes `.gitignore` to avoid committing secrets):
 
+```
+GENAI_API_KEY=your_google_genai_api_key_here
+```
+
+2. Or set the environment variable in your OS / hosting environment.
+
+Example (macOS / Linux):
+```bash
+export GENAI_API_KEY="your_google_genai_api_key_here"
+```
+
+Example (PowerShell):
 ```powershell
+setx GENAI_API_KEY "your_google_genai_api_key_here"
+```
+
+When the app starts, it will warn in the UI if `GENAI_API_KEY` is not set.
+
+## Supported resume file types
+- PDF (`application/pdf`) — parsed with PyPDF2
+- Plain text (`text/plain`)
+
+If you upload other file types, the app will show an error.
+
+## How it works (high level)
+- The uploaded document's text is extracted (PDF or TXT).
+- The app calls Gemini (`gemini-2.5-flash`) as a strict classifier to decide whether the text is a resume. The classifier expects an exact reply of `RESUME` or `NOT_RESUME`.
+- If classified as a resume, the app sends the resume content and the pasted job description to Gemini to generate a Markdown report:
+  - Match Score (0–100)
+  - Missing keywords
+  - Recommended improvements to bullet points
+- The resulting report is displayed directly in the Streamlit UI.
+
+Important: app.py currently uses the model name `gemini-2.5-flash` when creating a GenerativeModel instance. Ensure your Google GenAI access supports that model or update the model name accordingly.
+
+## Running the app locally
+1. Create and activate a virtual environment:
+```bash
+python -m venv venv
+# macOS / Linux
+source venv/bin/activate
+# Windows (PowerShell)
+.\venv\Scripts\Activate.ps1
+```
+
+2. Install dependencies:
+```bash
+pip install -r requirements.txt
+```
+
+3. Set `GENAI_API_KEY` (see Environment variables section).
+
+4. Run Streamlit:
+```bash
 streamlit run app.py
 ```
 
-## Notes
-- The app tries to use `langchain_core` + `langchain_ollama` if installed. If those packages aren't available or the LangChain call fails, it falls back to the `ollama` CLI (`ollama generate` or `ollama run`).
-- Use the `Model name` input in the UI to choose a model (default: `ollama:latest`).
-- Enable `Show debug logs` to display error details returned from the Ollama CLI or LangChain runtime.
+Open http://localhost:8501 in your browser.
 
-If you want, I can pin specific versions for `langchain-core` and `langchain-ollama` that I've tested, or add a small integration test harness to validate Ollama connectivity automatically.
+## UI usage
+1. In the "Upload Resume" panel, upload a PDF or TXT resume.
+2. In the "Job Description" panel, paste the job description text.
+3. Click "Analyze Resume".
+4. The app will validate file type, check if the document looks like a resume, then produce the analysis report in Markdown.
 
-## Deployment
+If either the resume or job description is missing, the app warns and does not proceed.
 
-### Option 1: Streamlit Cloud (Recommended)
-1. Push your repository to GitHub: ✅ **Done** → https://github.com/souravprince-14/resume_ai
-2. Go to https://share.streamlit.io and sign in with your GitHub account.
-3. Click **"New app"**, select your repository (`resume_ai`), branch (`main`), and main file (`app.py`).
-4. Streamlit Cloud will automatically install `requirements.txt` and run your app.
-5. Your app will be live at `https://share.streamlit.io/souravprince-14/resume_ai`.
+## Troubleshooting
+- "GENAI_API_KEY is not set" warning: make sure the environment variable or `.env` is set correctly.
+- PDF extraction problems: some PDFs (scanned images) won't yield text — convert to text-first PDFs or use OCR before uploading.
+- Model/permission errors: ensure your Google GenAI access supports the chosen model (`gemini-2.5-flash`) and your key has the right permissions.
+- Large documents: the app truncates content when building prompts (the classifier uses the first part of the document). For very long resumes or JDs, consider pasting the most relevant sections.
 
-**Note:** Streamlit Cloud runs on public servers. If Ollama is running on your local machine, the app won't be able to reach it remotely. To use Ollama on Streamlit Cloud, you'll need to either:
-- Run Ollama on a remote server accessible via HTTP (e.g., `http://your-server:11434`).
-- Use a cloud-hosted LLM API (e.g., OpenAI, Anthropic) instead of local Ollama.
+## Security — handling API keys
+- Treat any committed API key as compromised. Rotate the key immediately if accidentally committed.
+- Keep keys out of source control (use `.env` and `.gitignore`, or store secrets in your cloud/hosting provider).
+- If a key was committed historically, consider removing it from git history using BFG or git filter-repo (rewriting history is disruptive; coordinate with collaborators).
 
-## Security — exposed API key
+## Deployment notes
+- Streamlit Cloud / Render / Fly.io: set the `GENAI_API_KEY` via the dashboard secrets environment variables.
+- This app depends on an external Gemini API — it must be able to reach Google GenAI from the deployment environment.
 
-It looks like an API key was previously committed into `app.py`. Treat any committed API key as compromised and rotate it immediately.
+## Extending the app
+- Add a small pre-flight integration test to validate `GENAI_API_KEY` and that the configured model is reachable.
+- Add support for richer resume parsing (structured sections, experience dates) and more granular scoring.
+- Limit prompt length or chunk large documents to avoid prompt-size issues.
 
-Recommended immediate actions:
-- Revoke the exposed API key in the Google Cloud Console (or the provider dashboard) and create a new key.
-- Do NOT continue using the old key in any environment.
+---
 
-How to provide the new key to the app:
-1. Locally, create a `.env` file in the project root (this file is already ignored by `.gitignore`) with:
-
-```
-GENAI_API_KEY=your_new_api_key_here
-```
-
-2. Or set the environment variable in your host (Streamlit Cloud or Render):
-
-PowerShell (local):
-```powershell
-setx GENAI_API_KEY "your_new_api_key_here"
-```
-
-Streamlit Cloud / Render: set the environment variable via the web dashboard for your app.
-
-Optional: Remove the key from git history
-
-If you want to remove the exposed key from the repository history so it's no longer in past commits, you can use one of these tools (warning: rewriting history is disruptive):
-
-- BFG Repo-Cleaner (recommended): https://rtyley.github.io/bfg-repo-cleaner/
-
-	Example:
-	```bash
-	# Backup remote first
-	git clone --mirror https://github.com/<your-username>/resume_ai.git
-	java -jar bfg.jar --delete-files id_rsa --replace-text passwords.txt resume_ai.git
-	cd resume_ai.git
-	git reflog expire --expire=now --all && git gc --prune=now --aggressive
-	git push --force
-	```
-
-- git filter-repo (alternative): https://github.com/newren/git-filter-repo
-
-	Example:
-	```bash
-	git filter-repo --invert-paths --path app.py
-	git push --force
-	```
-
-If you're unsure or want me to perform the history rewrite for you, tell me and I'll walk through it — but note you'll need to force-push and collaborators will need to re-clone.
-
-### Option 2: Render or Fly.io (For remote Ollama or cloud LLM)
-1. Create an account on https://render.com or https://fly.io.
-2. Connect your GitHub repository.
-3. Set the build command: `pip install -r requirements.txt`
-4. Set the start command: `streamlit run app.py --server.port $PORT --server.headless true`
-5. Deploy and configure environment variables if using a cloud LLM.
-
-### Option 3: Keep running locally
-- Run `streamlit run app.py` on your machine and access it at `http://localhost:8501`.
-- This is ideal if Ollama is running on your local system.
+If you'd like, I can:
+- Push this README to the repository as a replacement,
+- Generate or validate a requirements.txt,
+- Or add a small health-check endpoint and CI job to validate the GENAI connectivity before launching.
