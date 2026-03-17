@@ -9,7 +9,7 @@ This README reflects the behavior implemented in app.py.
 
 ## Features
 - Resume/TXT upload (PDF or plain text)
-- Strict resume detection using Gemini
+- Strict resume detection using Gemini.
 - Resume vs. Job Description analysis with a career-coach style report
 - Outputs a Markdown report including:
   - Match Score (0–100)
