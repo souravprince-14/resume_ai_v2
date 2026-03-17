@@ -46,17 +46,17 @@ def is_resume_like(text: str) -> bool:
     model = genai.GenerativeModel("gemini-2.5-flash")
 
     prompt = f"""
-You are a strict classifier for resume detection.
+                You are a strict classifier for resume detection.
 
-You will be given the content of a document.
-If it is a professional resume/CV (with things like work experience, skills, education, projects),
-reply with exactly: RESUME
-If it is anything else (cheat sheet, article, post, code, social media, etc.),
-reply with exactly: NOT_RESUME
+                You will be given the content of a document.
+                If it is a professional resume/CV (with things like work experience, skills, education, projects),
+                reply with exactly: RESUME
+                If it is anything else (cheat sheet, article, post, code, social media, some random text,etc.),
+                reply with exactly: NOT_RESUME
 
-Document:
-{text[:4000]}
-"""
+                Document:
+                {text[:4000]}
+            """
 
     resp = model.generate_content(prompt)
     answer = resp.text.strip().upper()
@@ -67,19 +67,19 @@ def analyze_resume(resume_content, job_description):
     model = genai.GenerativeModel('gemini-2.5-flash')
     
     prompt = f"""
-You are an expert Career Coach. Compare the provided Resume against the Job Description.
+                You are an expert Career Coach. Compare the provided Resume against the Job Description.
 
-JOB DESCRIPTION:
-{job_description}
+                JOB DESCRIPTION:
+                {job_description}
 
-RESUME CONTENT:
-{resume_content}
+                RESUME CONTENT:
+                {resume_content}
 
-Please provide a detailed report in Markdown:
-1. Match Score (0-100)
-2. Missing Keywords
-3. Recommended Changes to bullet points
-"""
+                Please provide a detailed report in Markdown:
+                1. Match Score (0-100)
+                2. Missing Keywords
+                3. Recommended Changes to bullet points
+            """
     response = model.generate_content(prompt)
     return response.text
 
